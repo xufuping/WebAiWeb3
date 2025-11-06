@@ -1,0 +1,6 @@
+{
+  "scripts": {
+    "note": "node create-note.js",
+    "new-note": "node create-note.js"
+  }
+}
