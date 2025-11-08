@@ -44,7 +44,7 @@ function formatDate(date) {
 function checkNoteFormat(filePath, fileName) {
     try {
         const content = fs.readFileSync(filePath, 'utf8');
-        
+
         const result = {
             fileName,
             isValid: true,
@@ -86,12 +86,27 @@ function checkNoteFormat(filePath, fileName) {
             result.errors.push('缺少 tags 字段');
         } else {
             result.metadata.tagsRaw = tagsMatch[1].trim();
-            // 解析标签
-            const tags = tagsMatch[1].match(/`([^`]+)`/g)?.map(t => t.replace(/`/g, '')) || [];
+            // 解析标签 - 支持 YAML 数组格式
+            const tagsStr = tagsMatch[1].trim();
+            let tags = [];
+
+            // 尝试解析 [tag1, tag2, tag3] 格式
+            if (tagsStr.startsWith('[') && tagsStr.endsWith(']')) {
+                tags = tagsStr.slice(1, -1).split(',').map(t => t.trim()).filter(t => t);
+            }
+            // 兼容旧的反引号格式（用于迁移）
+            else if (tagsStr.includes('`')) {
+                tags = tagsStr.match(/`([^`]+)`/g)?.map(t => t.replace(/`/g, '')) || [];
+            }
+            // 支持逗号分隔的简单格式
+            else if (tagsStr.includes(',')) {
+                tags = tagsStr.split(',').map(t => t.trim()).filter(t => t);
+            }
+
             result.metadata.tags = tags;
-            
+
             if (tags.length === 0) {
-                result.warnings.push('tags 字段为空或格式不正确（应使用反引号包裹，如 `前端` `React`）');
+                result.warnings.push('tags 字段为空或格式不正确（应使用数组格式，如 [前端, React]）');
             }
         }
 
@@ -240,7 +255,7 @@ function main() {
 
     // 第一步：扫描所有笔记
     console.log(`${colors.yellow}步骤 1/2:${colors.reset} 扫描笔记文件并检查格式...\n`);
-    
+
     const results = scanAllNotes();
 
     if (results.length === 0) {
@@ -262,7 +277,7 @@ function main() {
     // 显示格式不符合的文件
     if (invalidNotes.length > 0) {
         console.log(`${colors.red}${colors.bright}❌ 格式不符合要求的文件:${colors.reset}\n`);
-        
+
         invalidNotes.forEach((note, index) => {
             console.log(`${colors.bright}${index + 1}. ${note.fileName}${colors.reset}`);
             note.errors.forEach(error => {
@@ -275,7 +290,7 @@ function main() {
     // 显示有警告的文件
     if (notesWithWarnings.length > 0) {
         console.log(`${colors.yellow}${colors.bright}⚠️  有警告的文件:${colors.reset}\n`);
-        
+
         notesWithWarnings.forEach((note, index) => {
             console.log(`${colors.bright}${index + 1}. ${note.fileName}${colors.reset}`);
             note.warnings.forEach(warning => {
@@ -288,7 +303,7 @@ function main() {
     // 第二步：更新索引文件
     if (validNotes.length > 0) {
         console.log(`${colors.yellow}步骤 2/2:${colors.reset} 更新索引文件...\n`);
-        
+
         try {
             // 读取旧的索引文件（如果存在）
             let oldIndexContent = '';
