@@ -85,7 +85,8 @@ function formatDate(date) {
 
 // 生成笔记内容
 function generateNoteContent(title, tags, createdTime) {
-    const tagList = tags.map(tag => `\`${tag}\``).join(' ');
+    // 使用标准 YAML 数组格式
+    const tagList = `[${tags.join(', ')}]`;
 
     return `---
 title: ${title}
